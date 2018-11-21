@@ -1,25 +1,27 @@
 defmodule Light do
   use Application
 
+  alias ElixirALE.GPIO
   require Logger
 
-  alias Nerves.Leds
+  @on 1
+  @off 2
 
   def start(_type, _args) do
     RingLogger.attach()
     Logger.info("Application is starting")
-    [led] = Application.get_env(:light, :led_list)
-    Logger.info("led to blink is #{inspect(led)}")
-    spawn(fn -> blink_list_forever(led) end)
+    {:ok, pid} = GPIO.start_link(18, :output)
+
+    spawn(fn -> blink_list_forever(pid) end)
+
     {:ok, self()}
   end
 
-  def blink_list_forever(led) do
-    Leds.set([{led, true}])
-    :timer.sleep(:timer.seconds(10))
-    Leds.set([{led, false}])
-    :timer.sleep(:timer.seconds(4))
-    blink_list_forever(led)
+  def blink_list_forever(pid) do
+    GPIO.write(pid, @on)
+    :timer.sleep(:timer.second(5))
+    GPIO.write(pid, @off)
+    :timer.sleep(:timer.second(5))
+    blink_list_forever()
   end
-
 end

@@ -42,7 +42,8 @@ defmodule Light.MixProject do
       {:shoehorn, "~> 0.4"},
       {:ring_logger, "~> 0.6"},
       {:toolshed, "~> 0.2"},
-      {:nerves_runtime, "~> 0.6"}
+      {:nerves_runtime, "~> 0.6"},
+      {:elixir_ale, "~> 1.2"}
     ] ++ deps(@target)
   end
 
