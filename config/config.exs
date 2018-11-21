@@ -22,7 +22,7 @@ config :shoehorn,
 # See https://hexdocs.pm/ring_logger/readme.html for more information on
 # configuring ring_logger.
 
-config :logger, backends: [RingLogger]
+config :logger, backends: [RingLogger], level: :debug
 
 # Import target specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
