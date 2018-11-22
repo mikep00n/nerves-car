@@ -12,8 +12,7 @@ defmodule Light do
   @avg_count 7
   @retry_count 20
 
-  # @sonic_speed 34300
-  # @microsecond_divisor 1000000
+  @microsecond_divisor 58
 
   def start(_type, _args) do
     RingLogger.attach()
@@ -41,7 +40,7 @@ defmodule Light do
 
         case time_between_echo(reader_pin_pid) do
           0 -> 0
-          microseconds -> microseconds / 58 / 2
+          microseconds -> microseconds / @microsecond_divisor / 2
         end
       end)
       |> Enum.reject(&(&1 === 0))
