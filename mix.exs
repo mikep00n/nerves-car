@@ -11,6 +11,9 @@ defmodule Light.MixProject do
       target: @target,
       archives: [nerves_bootstrap: "~> 1.0"],
       deps_path: "deps/#{@target}",
+      elixirc_options: [
+        warnings_as_errors: Mix.env() !== :test
+      ],
       build_path: "_build/#{@target}",
       lockfile: "mix.lock.#{@target}",
       start_permanent: Mix.env() == :prod,
