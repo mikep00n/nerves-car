@@ -1,5 +1,8 @@
-defmodule Light.SonicRangeControl do
+defmodule Car.SonicRangeControl do
   use GenServer
+
+  require Logger
+  alias ElixirALE.GPIO
 
   @type position :: :left | :right | :up | :down
 
@@ -10,20 +13,22 @@ defmodule Light.SonicRangeControl do
 
   @spec start_link(position) :: {:ok, pid}
   def start_link(position) do
-    Genserver.start_link(Control, [], name: create_name(position))
+    GenServer.start_link(Car.SonicRangeControl, position, name: name(position))
   end
 
-  defp create_name(position) do
+  def name(position) do
     String.to_atom("control_server_#{position}")
   end
 
-  def init(_) do
-    {:ok, %{}}
+  def init(position) do
+    Logger.warn("SonicRangeControl #{name(position)} started")
+
+    {:ok, %{position: position}}
   end
 
   @spec find_echo_range(position, pid) :: integer
   def find_echo_range(position, reader_pin_pid) do
-    GenServer.call(create_name(position), {:find_range, reader_pin_pid})
+    GenServer.call(name(position), {:find_range, reader_pin_pid})
   end
 
   # Server
@@ -41,12 +46,6 @@ defmodule Light.SonicRangeControl do
 
   end
 
-  def safe_divisor(0), do: 1
-  def safe_divisor(n), do: n
-
-  def round_num(n) when is_float(n), do: trunc(Float.round(n))
-  def round_num(n) when is_integer(n), do: n
-
   def time_between_echo(reader_pin_pid, start_time \\ NaiveDateTime.utc_now(), retry_count \\ 0) do
     if retry_count < @retry_count do
       case GPIO.read(reader_pin_pid) do
@@ -55,6 +54,7 @@ defmodule Light.SonicRangeControl do
         _ -> raise RuntimeError, "Error reading pin"
       end
     else
+      Logger.warn "Maxed out retries waiting for 0 #{reader_pin_pid}"
       0
     end
   end
@@ -62,7 +62,7 @@ defmodule Light.SonicRangeControl do
   def save_when_returns_0(reader_pin_pid, start_time, retry \\ 0) do
     cond do
       retry > @retry_count ->
-        Logger.info("Unable to read echo return")
+      Logger.warn "Maxed out retries waiting for 1 #{reader_pin_pid}"
 
         0
 

@@ -22,12 +22,14 @@ config :shoehorn,
 # See https://hexdocs.pm/ring_logger/readme.html for more information on
 # configuring ring_logger.
 
-config :logger, backends: [RingLogger], level: :debug
+# config :logger, backends: [RingLogger], level: :debug
+config :logger, :console,
+  format: "$time [$level] $message\n",
+  level: :warn,
+  metadata: []
 
 # Import target specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 # Uncomment to use target specific configurations
 
 # import_config "#{Mix.Project.config[:target]}.exs"
-config :light, led_list: [:green]
-config :nerves_leds, names: [green: "led0"]

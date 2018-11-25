@@ -1,11 +1,11 @@
-defmodule Light.MixProject do
+defmodule Car.MixProject do
   use Mix.Project
 
   @target System.get_env("MIX_TARGET") || "host"
 
   def project do
     [
-      app: :light,
+      app: :car,
       version: "0.1.0",
       elixir: "~> 1.6",
       target: @target,
@@ -33,7 +33,7 @@ defmodule Light.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Light, []},
+      mod: {Car.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -55,7 +55,6 @@ defmodule Light.MixProject do
 
   defp deps(target) do
     [
-      {:nerves_leds, "~> 0.8.0"},
     ] ++ system(target)
   end
 

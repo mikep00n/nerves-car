@@ -25,8 +25,8 @@ end
 # when running `mix release`, the first release in the file
 # will be used by default
 
-release :light do
-  set(version: current_version(:light))
+release :car do
+  set(version: current_version(:car))
   plugin(Nerves)
   plugin(Shoehorn)
 end
