@@ -17,18 +17,18 @@ defmodule Car.SonicRangeChecker do
     ])
   end
 
-  def find_range(trigger_pin_pid, reader_pin_direction_gpio_pids) do
-    directions = find_echo_range(trigger_pin_pid, reader_pin_direction_gpio_pids)
+  def find_range(trigger_pin_name, reader_pin_direction_gpio_pids) do
+    directions = find_echo_range(trigger_pin_name, reader_pin_direction_gpio_pids)
 
     Logger.warn("Range Result: #{inspect directions}")
 
-    :timer.sleep(:timer.seconds(5))
+    Process.sleep(:timer.seconds(5))
 
-    find_range(trigger_pin_pid, reader_pin_direction_gpio_pids)
+    find_range(trigger_pin_name, reader_pin_direction_gpio_pids)
   end
 
-  def find_echo_range(trigger_pin_pid, reader_pin_direction_gpio_pids) do
-    trigger(trigger_pin_pid)
+  def find_echo_range(trigger_pin_name, reader_pin_direction_gpio_pids) do
+    trigger(trigger_pin_name)
 
     reader_pin_direction_gpio_pids
       |> Task.async_stream(fn {direction, reader_pin_pid} ->
@@ -42,8 +42,8 @@ defmodule Car.SonicRangeChecker do
       end)
   end
 
-  def trigger(trigger_pin_pid) do
-    GPIO.write(trigger_pin_pid, @voltage_high)
-    GPIO.write(trigger_pin_pid, @voltage_low)
+  def trigger(trigger_pin_name) do
+    GPIO.write(trigger_pin_name, @voltage_high)
+    GPIO.write(trigger_pin_name, @voltage_low)
   end
 end

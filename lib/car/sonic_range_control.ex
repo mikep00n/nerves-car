@@ -10,25 +10,25 @@ defmodule Car.SonicRangeControl do
   @microsecond_divisor 58
 
   # API
-
   @spec start_link(position) :: {:ok, pid}
-  def start_link(position) do
-    GenServer.start_link(Car.SonicRangeControl, position, name: name(position))
+  @spec start_link(position, Keyword.t) :: {:ok, pid}
+  def start_link(position, opts \\ []) do
+    GenServer.start_link(Car.SonicRangeControl, position, opts)
   end
 
-  def name(position) do
+  def server_name(position) do
     String.to_atom("control_server_#{position}")
   end
 
   def init(position) do
-    Logger.warn("SonicRangeControl #{name(position)} started")
+    Logger.warn("SonicRangeControl #{server_name(position)} started")
 
     {:ok, %{position: position}}
   end
 
   @spec find_echo_range(position, pid) :: integer
   def find_echo_range(position, reader_pin_pid) do
-    GenServer.call(name(position), {:find_range, reader_pin_pid})
+    GenServer.call(server_name(position), {:find_range, reader_pin_pid})
   end
 
   # Server
