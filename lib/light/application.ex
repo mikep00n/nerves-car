@@ -7,6 +7,8 @@ defmodule Light.Application do
 
   use Application
 
+  alias Light.SonicRangeControl
+
   def start(_type, _args) do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -26,6 +28,10 @@ defmodule Light.Application do
     [
       # Starts a worker by calling: Light.Worker.start_link(arg)
       # {Light.Worker, arg},
+      {SonicRangeControl, :left},
+      {SonicRangeControl, :right},
+      {SonicRangeControl, :up},
+      {SonicRangeControl, :down}
     ]
   end
 end
