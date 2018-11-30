@@ -7,6 +7,8 @@ defmodule Car.Application do
   @trigger_pin_num 18
   @input_pins [right: 23, left: 24, up: 17, down: 27]
   @output_pins [{@trigger_pin_name, @trigger_pin_num}]
+  @left [left: 5, left: 13]
+  @right [right: 6, right: 26]
 
   use Application
 
