@@ -1,7 +1,7 @@
 defmodule MotorDriver do
   use Genserver
 
-  :left = [left: 5, left: 13]
+  :left = [left: 5]
 
   start_link do
     GenServer.start_link(MotorDriver, :left , name: MotorDriver)
