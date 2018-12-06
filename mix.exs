@@ -46,7 +46,8 @@ defmodule Car.MixProject do
       {:ring_logger, "~> 0.6"},
       {:toolshed, "~> 0.2"},
       {:nerves_runtime, "~> 0.6"},
-      {:elixir_ale, "~> 1.2"}
+      {:elixir_ale, "~> 1.2"},
+      {:pigpiox, "~> 0.1"}
     ] ++ deps(@target)
   end
 

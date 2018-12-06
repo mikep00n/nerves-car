@@ -7,21 +7,41 @@ defmodule Car.Application do
   @trigger_pin_num 18
   @input_pins [right: 23, left: 24, up: 17, down: 27]
   @output_pins [{@trigger_pin_name, @trigger_pin_num}]
-  @left [left: 5]
-  @right [right: 6]
+  @left_motor 5
+  # @right_motor 6
 
   use Application
 
   require Logger
 
-  alias Car.{SonicRangeControl, SonicRangeChecker}
+  alias Car.{MotorDriver, SonicRangeControl, SonicRangeChecker}
   alias ElixirALE.GPIO
 
   def start(_type, _args) do
     Logger.warn("Starting Application...")
 
     opts = [strategy: :one_for_all, name: Car.Supervisor]
-    Supervisor.start_link(children(), opts)
+    # Supervisor.start_link(children(), opts)
+    Supervisor.start_link(motor_children(), opts)
+  end
+
+  def motor_children do
+    {:ok, pin_left_pid} = GPIO.start_link(
+      @left_motor,
+      :output,
+      name: gpio_pin_name(:left_motor, @left_motor)
+    )
+
+    # {:ok, pin_right_pid} = GPIO.start_link(
+    #   @right_motor,
+    #   :output,
+    #   name: gpio_pin_name(:right_motor, @right_motor)
+    # )
+
+    [
+      {MotorDriver, %{side: :left, pin_pid: pin_left_pid}}
+      # {MotorDriver, %{side: :right, pin_pid: pin_right_pid}}
+    ]
   end
 
   def children do
