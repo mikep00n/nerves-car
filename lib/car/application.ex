@@ -7,8 +7,8 @@ defmodule Car.Application do
   @trigger_pin_num 18
   @input_pins [right: 23, left: 24, up: 17, down: 27]
   @output_pins [{@trigger_pin_name, @trigger_pin_num}]
-  @left_motor 5
-  # @right_motor 6
+  @left_motor {6, 13}
+  # @right_motor {5, 26}
 
   use Application
 
@@ -21,25 +21,25 @@ defmodule Car.Application do
     Logger.warn("Starting Application...")
 
     opts = [strategy: :one_for_all, name: Car.Supervisor]
-    # Supervisor.start_link(children(), opts)
-    Supervisor.start_link(motor_children(), opts)
+
+    Supervisor.start_link(motor_children(@left_motor), opts)
   end
 
-  def motor_children do
-    {:ok, pin_left_pid} = GPIO.start_link(
-      @left_motor,
+  def motor_children({pin_1, pin_2}) do
+    {:ok, pin_1_pid} = GPIO.start_link(
+      pin_1,
       :output,
-      name: gpio_pin_name(:left_motor, @left_motor)
+      name: gpio_pin_name(:left_motor, pin_1)
     )
 
-    # {:ok, pin_right_pid} = GPIO.start_link(
-    #   @right_motor,
-    #   :output,
-    #   name: gpio_pin_name(:right_motor, @right_motor)
-    # )
+    {:ok, pin_2_pid} = GPIO.start_link(
+      pin_2,
+      :output,
+      name: gpio_pin_name(:right_motor, pin_2)
+    )
 
     [
-      {MotorDriver, %{side: :left, pin_pid: pin_left_pid}}
+      {MotorDriver, %{side: :left, pin_pids: {pin_1_pid, pin_2_pid}}}
       # {MotorDriver, %{side: :right, pin_pid: pin_right_pid}}
     ]
   end
@@ -47,6 +47,7 @@ defmodule Car.Application do
   def children do
     {input_pin_gpio_names, input_pin_gpio_specs} = input_pin_gpios()
     {output_pin_gpio_names, output_pin_gpio_specs} = output_pin_gpios()
+
     {
       sonic_range_control_names,
       sonic_range_control_specs

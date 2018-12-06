@@ -6,7 +6,9 @@ defmodule Car.MotorDriver do
   alias ElixirALE.GPIO
   alias Car.MotorDriver
 
-  @type start_config :: %{side: String.t, pin_pid: pid}
+  @type start_config :: %{side: atom, pin_pids: {pid, pid}}
+  @type direction :: :forward | :reverse
+  @type state :: %{side: atom, pin_pids: {pid, pid}, direction: direction}
 
   @voltage_high 1
   @voltage_low 0
@@ -15,13 +17,11 @@ defmodule Car.MotorDriver do
   def start_link(config) do
     Logger.warn("Starting #{config.side} MotorDriver")
 
-    IO.inspect motor_driver_name(config.side)
-    GenServer.start_link(MotorDriver, config, name: motor_driver_name(config.side)) |> IO.inspect
+    GenServer.start_link(MotorDriver, config, name: motor_driver_name(config.side))
   end
 
+  @spec motor_driver_name(atom) :: String.t
   def motor_driver_name(side), do: String.to_atom("motor_driver_#{side}")
-
-  # API
 
   def init(config) do
     Logger.warn("init called for motor driver #{inspect config}")
@@ -36,33 +36,40 @@ defmodule Car.MotorDriver do
     res
   end
 
+  # API
+
+  @spec switch_voltage_off(atom) :: {:ok, state}
   def switch_voltage_off(side) do
     GenServer.call(motor_driver_name(side), :switch_voltage_off)
   end
 
-  def switch_voltage_on(side) do
-    GenServer.call(motor_driver_name(side), :switch_voltage_on)
+  @spec change_voltage(atom, direction) :: {:ok, state}
+  def change_voltage(side, direction) do
+    GenServer.call(motor_driver_name(side), {:change_voltage, direction})
   end
 
   # Server
-
-  def handle_call(:switch_voltage_on, state) do
-    reply_with_voltage_change(state, @voltage_high)
+  def handle_call({:change_voltage, direction}, state) do
+    reply_with_voltage_change(state, direction, @voltage_high)
   end
 
   def handle_call(:switch_voltage_off, state) do
-    reply_with_voltage_change(state, @voltage_low)
+    reply_with_voltage_change(state, state.direction, @voltage_low)
   end
 
-  defp reply_with_voltage_change(state, voltage_level) do
-    with {:ok, new_state} <- set_current_voltage(state, voltage_level) do
+  defp reply_with_voltage_change(state, direction, voltage_level) do
+    with {:ok, new_state} <- set_current_voltage(
+      state,
+      direction,
+      voltage_level
+    ) do
       {:reply, :ok, new_state}
     else
       e -> {:reply, e, state}
     end
   end
 
-  defp set_current_voltage(%{pin_pid: pin_pid} = state, value) do
+  defp set_current_voltage(%{pin_pid: pin_pid} = state, _direction, value) do
     IO.inspect "SETTING VOLTAGE #{inspect state}"
     IO.inspect value
     with false <- Map.get(state, :current_voltage) === value,
