@@ -7,7 +7,7 @@ defmodule Car.Application do
   @trigger_pin_num 18
   @input_pins [right: 23, left: 24, up: 17, down: 27]
   @output_pins [{@trigger_pin_name, @trigger_pin_num}]
-  @left_motor {6, 13}
+  @left_motor {5, 6}
   # @right_motor {5, 26}
 
   use Application
@@ -35,8 +35,11 @@ defmodule Car.Application do
     {:ok, pin_2_pid} = GPIO.start_link(
       pin_2,
       :output,
-      name: gpio_pin_name(:right_motor, pin_2)
+      name: gpio_pin_name(:left_motor, pin_2)
     )
+
+    GPIO.write(pin_1_pid, 0)
+    GPIO.write(pin_2_pid, 0)
 
     [
       {MotorDriver, %{side: :left, pin_pids: {pin_1_pid, pin_2_pid}}}

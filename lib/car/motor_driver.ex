@@ -7,8 +7,13 @@ defmodule Car.MotorDriver do
   alias Car.MotorDriver
 
   @type start_config :: %{side: atom, pin_pids: {pid, pid}}
-  @type direction :: :forward | :reverse
-  @type state :: %{side: atom, pin_pids: {pid, pid}, direction: direction}
+  @type direction :: :forward | :reverse | :off
+  @type state :: %{
+    side: atom,
+    pin_pids: {pid, pid},
+    direction: direction,
+    speed: 10
+  }
 
   @voltage_high 1
   @voltage_low 0
@@ -24,16 +29,13 @@ defmodule Car.MotorDriver do
   def motor_driver_name(side), do: String.to_atom("motor_driver_#{side}")
 
   def init(config) do
-    Logger.warn("init called for motor driver #{inspect config}")
-    res = set_current_voltage(config, @voltage_high)
+    state = Map.merge(config, %{direction: :off, speed: 10})
 
-    if {:ok, %{side: side}} = res do
-      Logger.warn("Started #{side} MotorDriver")
-    else
-      Logger.warn("Could not start MotorDriver #{inspect config}")
-    end
+    Logger.warn("init called for motor driver #{inspect state}")
 
-    res
+    # Process.send_after(self(), :test, :timer.seconds(5))
+
+    {:ok, state}
   end
 
   # API
@@ -43,48 +45,89 @@ defmodule Car.MotorDriver do
     GenServer.call(motor_driver_name(side), :switch_voltage_off)
   end
 
-  @spec change_voltage(atom, direction) :: {:ok, state}
-  def change_voltage(side, direction) do
-    GenServer.call(motor_driver_name(side), {:change_voltage, direction})
+  @spec change_direction(atom, direction) :: {:ok, state}
+  def change_direction(side, direction) do
+    GenServer.call(motor_driver_name(side), {:change_direction, direction})
+  end
+
+  @spec change_speed(atom, integer) :: {:ok, state}
+  def change_speed(side, speed) do
+    GenServer.call(motor_driver_name(side), {:change_speed, speed})
   end
 
   # Server
-  def handle_call({:change_voltage, direction}, state) do
-    reply_with_voltage_change(state, direction, @voltage_high)
+  def handle_call({:change_direction, direction}, state) do
+    Logger.warn "Changing #{state.side} motor direction to #{direction}"
+
+    reply_with_voltage_change(state, direction)
   end
 
   def handle_call(:switch_voltage_off, state) do
-    reply_with_voltage_change(state, state.direction, @voltage_low)
+    Logger.warn "Turning off #{state.side} motor"
+
+    reply_with_voltage_change(state, :off)
   end
 
-  defp reply_with_voltage_change(state, direction, voltage_level) do
-    with {:ok, new_state} <- set_current_voltage(
-      state,
-      direction,
-      voltage_level
-    ) do
+  def handle_call({:change_speed, speed}, state) do
+    Logger.warn "Changing #{state.side} motor speed from #{state.speed} to #{speed}"
+
+
+  end
+
+  # def handle_info(:test, state) do
+  #   direction = case state.direction do
+  #     :off -> :forward
+  #     :forward -> :reverse
+  #     :reverse -> :forward
+  #   end
+  #   Logger.warn("TEST CALLED: OLD_DIRECTION: #{state.direction}\nNEW_DIRECTION: #{direction}")
+
+  #   {:ok, new_state} = set_current_voltage(state, direction)
+
+  #   Logger.warn("SET VOLTAGE NEW STATE #{inspect new_state}")
+
+  #   Process.send_after(self(), :test, :timer.seconds(2))
+
+  #   {:noreply, new_state}
+  # end
+
+  defp reply_with_voltage_change(state, direction) do
+    with {:ok, new_state} <- set_current_voltage(state, direction) do
       {:reply, :ok, new_state}
     else
       e -> {:reply, e, state}
     end
   end
 
-  defp set_current_voltage(%{pin_pid: pin_pid} = state, _direction, value) do
-    IO.inspect "SETTING VOLTAGE #{inspect state}"
-    IO.inspect value
-    with false <- Map.get(state, :current_voltage) === value,
-         :ok <- (IO.inspect("GPIOWRITE"); GPIO.write(pin_pid, @voltage_low)) do
-      IO.inspect "HIT INSIDE set_current_voltage"
-      {:ok, Map.put(state, :current_voltage, value)}
-    else
-      true ->
-        {:error, %{
-          code: :already_same_voltage,
-          message: "voltage cannot be set to the same value",
-          details: %{state: state, value: value}
-        }}
+  defp set_current_voltage(
+    %{
+      pin_pids: {gpio_1, gpio_2},
+      direction: old_direction
+    } = state,
+    new_direction
+  ) do
+    cond do
+      old_direction === new_direction -> {:error, %{
+        code: :same_voltage,
+        message: "voltage is already set for #{new_direction}"
+      }}
 
-      e -> e
+      new_direction === :off ->
+        GPIO.write(gpio_1, @voltage_low)
+        GPIO.write(gpio_2, @voltage_low)
+
+      new_direction === :forward ->
+        GPIO.write(gpio_1, @voltage_high)
+        GPIO.write(gpio_2, @voltage_low)
+
+
+      new_direction === :reverse ->
+        GPIO.write(gpio_2, @voltage_high)
+        GPIO.write(gpio_1, @voltage_low)
     end
+
+    Logger.warn "Changed #{state.side} Motor Direction to #{new_direction}"
+
+    {:ok, %{state | direction: new_direction}}
   end
 end
