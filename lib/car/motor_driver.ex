@@ -1,23 +1,34 @@
+#  in general, it’s easier to think of as either duty cycle increasing or frequency increases to increase the duty_cycle of the motor.
+# (Pulse width is directly related to duty cycle, so if you decide to increase the width of a pulse, you are just altering the duty cycle.)
+
+# in every case duty cycle is a comparison of “on” versus “off.”
+
+# If you take the duty cycle and multiply it by the high voltage level (which is a
+# digital “on” or “1” state as far as the MCU is concerned), you will get the average voltage level that the motor is seeing at that moment.
+
+
 defmodule Car.MotorDriver do
   use GenServer
 
   require Logger
 
-  alias ElixirALE.GPIO
+  alias Pigpgiox.GPIO
   alias Car.MotorDriver
 
-  @type start_config :: %{side: atom, pin_pids: {pid, pid}}
+  @type start_config :: %{side: atom, pins: {integer, integer}}
   @type direction :: :forward | :reverse | :off
   @type side :: :left | :right
   @type state :: %{
     side: atom,
-    pin_pids: {pid, pid},
+    pins: {integer, interger},
     direction: direction,
     speed: 10
   }
 
   @voltage_high 1
   @voltage_low 0
+  @speed_range_denominator Enum.new(1..100)
+  @duty_cycle_max Enum.max(@speed_range_denominator)
 
   @spec start_link(side, {pid, pid}) :: {:ok, pid}
   def start_link(side, pin_pids) do
@@ -38,7 +49,7 @@ defmodule Car.MotorDriver do
 
     Logger.warn("Started #{config.side} MotorDriver")
 
-    # Process.send_after(self(), :test, :timer.seconds(5))
+    Process.send_after(self(), :test, :timer.seconds(5))
 
     {:ok, state}
   end
@@ -73,31 +84,20 @@ defmodule Car.MotorDriver do
     reply_with_voltage_change(state, :off)
   end
 
-  def handle_call({:change_speed, speed}, _from, state) do
-    Logger.warn "Changing #{state.side} motor speed from #{state.speed} to #{speed}"
+  def handle_call({:change_speed, new_speed}, state) do
+    Logger.warn "Changing #{state.side} motor speed from #{state.speed} to #{new_speed}"
 
-
+    with :ok <- verify_speed_range(new_speed),
+         {:ok, new_state} <- change_pulse(state, new_speed) do
+      {:reply, :ok, new_state}
+    else
+      e -> {:reply, e, state}
+    end
   end
 
-  # def handle_info(:test, state) do
-  #   direction = case state.direction do
-  #     :off -> :forward
-  #     :forward -> :reverse
-  #     :reverse -> :forward
-  #   end
-  #   Logger.warn("TEST CALLED: OLD_DIRECTION: #{state.direction}\nNEW_DIRECTION: #{direction}")
-
-  #   {:ok, new_state} = set_current_voltage(state, direction)
-
-  #   Logger.warn("SET VOLTAGE NEW STATE #{inspect new_state}")
-
-  #   Process.send_after(self(), :test, :timer.seconds(2))
-
-  #   {:noreply, new_state}
-  # end
-
   defp reply_with_voltage_change(state, direction) do
-    with {:ok, new_state} <- set_current_voltage(state, direction) do
+    with {:ok, new_state} <- set_current_voltage(state, direction),
+         :ok <- change_pulse(state, state.speed) do
       {:reply, :ok, new_state}
     else
       e -> {:reply, e, state}
@@ -106,7 +106,7 @@ defmodule Car.MotorDriver do
 
   defp set_current_voltage(
     %{
-      pin_pids: {gpio_1, gpio_2},
+      pins: {pin_1, pin_2},
       direction: old_direction
     } = state,
     new_direction
@@ -118,21 +118,54 @@ defmodule Car.MotorDriver do
       }}
 
       new_direction === :off ->
-        GPIO.write(gpio_1, @voltage_low)
-        GPIO.write(gpio_2, @voltage_low)
+        GPIO.write(pin_1, @voltage_low)
+        GPIO.write(pin_2, @voltage_low)
 
       new_direction === :forward ->
-        GPIO.write(gpio_1, @voltage_high)
-        GPIO.write(gpio_2, @voltage_low)
-
+        GPIO.write(pin_1, @voltage_high)
+        GPIO.write(pin_2, @voltage_low)
 
       new_direction === :reverse ->
-        GPIO.write(gpio_2, @voltage_high)
-        GPIO.write(gpio_1, @voltage_low)
+        GPIO.write(pin_2, @voltage_high)
+        GPIO.write(pin_1, @voltage_low)
     end
 
     Logger.warn "Changed #{state.side} Motor Direction to #{new_direction}"
 
     {:ok, %{state | direction: new_direction}}
+  end
+
+
+  defp verify_speed_range(speed) do
+    if Enum.member?(@speed_range, speed) do
+      :ok
+    else
+      {:error, %{
+        code: :out_of_range,
+        message: "speed is out of range",
+        details: %{
+          speed: speed,
+          speed_range: @speed_range
+        }
+      }}
+    end
+  end
+
+  defp change_pulse(%{direction: direction, pins: {pin_1, pin_2}} = state, speed) do
+    case direction do
+      :forward -> toggle_pulse_width(state, pin_1, pin_2, speed)
+      :reverse -> toggle_pulse_width(state, pin_2, pin_1, speed)
+      :off ->
+        toggle_off_pwm(pin_1)
+        toggle_off_pwm(pin_2)
+    end
+  end
+
+  @spec toggle_pulse_width(state, integer, integer, integer) :: {ok, state}
+  defp toggle_pulse_width(state, on_pin, off_pin, speed) do
+    with :ok <- Pwm.gpio_pwm(on_pin, speed / @duty_cycle_max),
+         :ok <- toggle_off_pwm(off_pin) do
+      {:ok, %{state | speed: speed}}
+    end
   end
 end

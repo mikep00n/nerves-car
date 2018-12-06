@@ -15,7 +15,7 @@ defmodule Car.Application do
   require Logger
 
   alias Car.{MotorDriver, SonicRangeControl, SonicRangeChecker}
-  alias ElixirALE.GPIO
+  alias Pigpiox.GPIO
 
   def start(_type, _args) do
     Logger.warn("Starting Application...")
@@ -28,21 +28,19 @@ defmodule Car.Application do
     ], opts)
   end
 
-  def motor_child(side, {pin_1, pin_2}) do
-    {:ok, pin_1_pid} = GPIO.start_link(
+  def motor_children(pin_tuple = {pin_1, pin_2}) do
+    GPIO.set_mode(
       pin_1,
-      :output,
-      name: gpio_pin_name("#{side}_motor", pin_1)
+      :output
     )
 
-    {:ok, pin_2_pid} = GPIO.start_link(
+    GPIO.set_mode(
       pin_2,
-      :output,
-      name: gpio_pin_name("#{side}_motor", pin_2)
+      :output
     )
 
-    GPIO.write(pin_1_pid, 0)
-    GPIO.write(pin_2_pid, 0)
+    GPIO.write(pin_1, 0)
+    GPIO.write(pin_2, 0)
 
     %{
       id: String.to_atom("motor_driver_#{side}"),
@@ -72,7 +70,7 @@ defmodule Car.Application do
   def sonic_range_checker_spec do
     args = [
       gpio_pin_name(@trigger_pin_name, @trigger_pin_num),
-      Enum.map(@input_pins, fn {id, pin} -> {id, gpio_pin_name(id, pin)} end)
+      Enum.map(@input_pins, fn {id, pin} -> {id, pin} end)
     ]
 
     Supervisor.child_spec(
