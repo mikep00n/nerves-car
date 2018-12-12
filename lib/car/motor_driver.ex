@@ -27,7 +27,7 @@ defmodule Car.MotorDriver do
 
   @voltage_high 1
   @voltage_low 0
-  @speed_range_denominator Enum.new(1..100)
+  @speed_range_denominator Enum.into(1..100, [])
   @duty_cycle_max Enum.max(@speed_range_denominator)
 
   @spec start_link(side, {pid, pid}) :: {:ok, pid}
