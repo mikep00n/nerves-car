@@ -28,7 +28,7 @@ defmodule Car.Application do
     ], opts)
   end
 
-  def motor_children(pin_tuple = {pin_1, pin_2}) do
+  def motor_child(side, {pin_1, pin_2}) do
     GPIO.set_mode(
       pin_1,
       :output
@@ -44,7 +44,7 @@ defmodule Car.Application do
 
     %{
       id: String.to_atom("motor_driver_#{side}"),
-      start: {MotorDriver, :start_link, [side, {pin_1_pid, pin_2_pid}]}
+      start: {MotorDriver, :start_link, [side, {pin_1, pin_2}]}
     }
   end
 
