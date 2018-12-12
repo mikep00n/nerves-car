@@ -8,7 +8,7 @@ defmodule Car.Application do
   @input_pins [right: 23, left: 24, up: 17, down: 27]
   @output_pins [{@trigger_pin_name, @trigger_pin_num}]
   @left_motor {5, 6}
-  # @right_motor {5, 26}
+  @right_motor {13, 26}
 
   use Application
 
@@ -22,29 +22,32 @@ defmodule Car.Application do
 
     opts = [strategy: :one_for_all, name: Car.Supervisor]
 
-    Supervisor.start_link(motor_children(@left_motor), opts)
+    Supervisor.start_link([
+      motor_child(:left, @left_motor),
+      motor_child(:right, @right_motor)
+    ], opts)
   end
 
-  def motor_children({pin_1, pin_2}) do
+  def motor_child(side, {pin_1, pin_2}) do
     {:ok, pin_1_pid} = GPIO.start_link(
       pin_1,
       :output,
-      name: gpio_pin_name(:left_motor, pin_1)
+      name: gpio_pin_name("#{side}_motor", pin_1)
     )
 
     {:ok, pin_2_pid} = GPIO.start_link(
       pin_2,
       :output,
-      name: gpio_pin_name(:left_motor, pin_2)
+      name: gpio_pin_name("#{side}_motor", pin_2)
     )
 
     GPIO.write(pin_1_pid, 0)
     GPIO.write(pin_2_pid, 0)
 
-    [
-      {MotorDriver, %{side: :left, pin_pids: {pin_1_pid, pin_2_pid}}}
-      # {MotorDriver, %{side: :right, pin_pid: pin_right_pid}}
-    ]
+    %{
+      id: String.to_atom("motor_driver_#{side}"),
+      start: {MotorDriver, :start_link, [side, {pin_1_pid, pin_2_pid}]}
+    }
   end
 
   def children do

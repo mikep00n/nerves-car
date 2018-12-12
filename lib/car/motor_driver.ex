@@ -8,6 +8,7 @@ defmodule Car.MotorDriver do
 
   @type start_config :: %{side: atom, pin_pids: {pid, pid}}
   @type direction :: :forward | :reverse | :off
+  @type side :: :left | :right
   @type state :: %{
     side: atom,
     pin_pids: {pid, pid},
@@ -18,11 +19,15 @@ defmodule Car.MotorDriver do
   @voltage_high 1
   @voltage_low 0
 
-  @spec start_link(start_config) :: {:ok, pid}
-  def start_link(config) do
-    Logger.warn("Starting #{config.side} MotorDriver")
+  @spec start_link(side, {pid, pid}) :: {:ok, pid}
+  def start_link(side, pin_pids) do
+    Logger.warn("Starting #{side} MotorDriver")
 
-    GenServer.start_link(MotorDriver, config, name: motor_driver_name(config.side))
+    GenServer.start_link(
+      MotorDriver,
+      %{side: side, pin_pids: pin_pids},
+      name: motor_driver_name(side)
+    )
   end
 
   @spec motor_driver_name(atom) :: String.t
@@ -31,7 +36,7 @@ defmodule Car.MotorDriver do
   def init(config) do
     state = Map.merge(config, %{direction: :off, speed: 10})
 
-    Logger.warn("init called for motor driver #{inspect state}")
+    Logger.warn("Started #{config.side} MotorDriver")
 
     # Process.send_after(self(), :test, :timer.seconds(5))
 
@@ -56,19 +61,19 @@ defmodule Car.MotorDriver do
   end
 
   # Server
-  def handle_call({:change_direction, direction}, state) do
+  def handle_call({:change_direction, direction}, _from, state) do
     Logger.warn "Changing #{state.side} motor direction to #{direction}"
 
     reply_with_voltage_change(state, direction)
   end
 
-  def handle_call(:switch_voltage_off, state) do
+  def handle_call(:switch_voltage_off, _from, state) do
     Logger.warn "Turning off #{state.side} motor"
 
     reply_with_voltage_change(state, :off)
   end
 
-  def handle_call({:change_speed, speed}, state) do
+  def handle_call({:change_speed, speed}, _from, state) do
     Logger.warn "Changing #{state.side} motor speed from #{state.speed} to #{speed}"
 
 
