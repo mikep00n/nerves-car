@@ -3,38 +3,33 @@ defmodule Car.SonicRangeChecker do
 
   require Logger
 
-  alias ElixirALE.GPIO
-
-  @voltage_high 1
-  @voltage_low 0
-
-  def start_link([trigger_pin_name, reader_pin_direction_gpio_pids]) do
+  def start_link(trigger_pin, direction_pin_map) do
     Logger.warn("Starting SonicRangeChecker...")
 
     Task.start_link(Car.SonicRangeChecker, :find_range, [
-      trigger_pin_name,
-      reader_pin_direction_gpio_pids
+      trigger_pin,
+      direction_pin_map
     ])
   end
 
-  def find_range(trigger_pin_name, reader_pin_direction_gpio_pids) do
-    directions = find_echo_range(trigger_pin_name, reader_pin_direction_gpio_pids)
+  def find_range(trigger_pin, direction_pin_map) do
+    directions = find_echo_range(trigger_pin, direction_pin_map)
 
     Logger.warn("Range Result: #{inspect directions}")
 
     Process.sleep(:timer.seconds(5))
 
-    find_range(trigger_pin_name, reader_pin_direction_gpio_pids)
+    find_range(trigger_pin, direction_pin_map)
   end
 
-  def find_echo_range(trigger_pin_name, reader_pin_direction_gpio_pids) do
-    trigger(trigger_pin_name)
+  def find_echo_range(trigger_pin, direction_pin_map) do
+    trigger(trigger_pin)
 
-    reader_pin_direction_gpio_pids
-      |> Task.async_stream(fn {direction, reader_pin_pid} ->
+    direction_pin_map
+      |> Task.async_stream(fn {direction, reader_pin} ->
         {
           direction,
-          Car.SonicRangeControl.find_echo_range(direction, reader_pin_pid)
+          Car.SonicRangeControl.find_echo_range(direction, reader_pin)
         }
       end)
       |> Enum.into(%{}, fn {:ok, {direction, range}} ->
@@ -42,8 +37,7 @@ defmodule Car.SonicRangeChecker do
       end)
   end
 
-  def trigger(trigger_pin_name) do
-    GPIO.write(trigger_pin_name, @voltage_high)
-    GPIO.write(trigger_pin_name, @voltage_low)
+  def trigger(trigger_pin) do
+    Car.PinControl.pulse_pin(trigger_pin)
   end
 end

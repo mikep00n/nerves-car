@@ -12,8 +12,7 @@ defmodule Car.MotorDriver do
 
   require Logger
 
-  alias Pigpiox.{GPIO, Pwm}
-  alias Car.MotorDriver
+  alias Car.{MotorDriver, PinControl}
 
   @type start_config :: %{side: atom, pins: {integer, integer}}
   @type direction :: :forward | :reverse | :off
@@ -25,11 +24,8 @@ defmodule Car.MotorDriver do
     speed: integer
   }
 
-  @voltage_low 0
   @speed_range Enum.into(1..25, [])
   @speed_range_max Enum.max(@speed_range)
-  @duty_cycle_max 255
-  @duty_cycle_min 50
   @start_speed div(@speed_range_max, 2)
 
   @spec start_link(side, {pid, pid}) :: {:ok, pid}
@@ -153,34 +149,16 @@ defmodule Car.MotorDriver do
 
   @spec toggle_pulse_width(state, integer, integer, integer) :: {:ok, state}
   defp toggle_pulse_width(state, on_pin, off_pin, speed) do
-    duty_cycle = (speed / @speed_range_max * (@duty_cycle_max - @duty_cycle_min))
-      |> float_to_integer
-      |> clamp_to_min
-
-    with :ok <- Pwm.gpio_pwm(on_pin, duty_cycle),
-         :ok <- toggle_pin_off(off_pin) do
+    with :ok <- PinControl.pulse_width_pin(on_pin, speed, @speed_range_max),
+         :ok <- PinControl.turn_off_pin(off_pin) do
       {:ok, %{state | speed: speed}}
     end
   end
 
-  defp clamp_to_min(number) when number < @duty_cycle_min, do: @duty_cycle_min
-  defp clamp_to_min(number), do: number
-
   defp toggle_pulse_width_off(%{pins: {pin_1, pin_2}} = state) do
-    with :ok <- toggle_pin_off(pin_1),
-         :ok <- toggle_pin_off(pin_2) do
+    with :ok <- PinControl.turn_off_pin(pin_1),
+         :ok <- PinControl.turn_off_pin(pin_2) do
       {:ok, state}
     end
-  end
-
-  defp toggle_pin_off(pin), do: GPIO.write(pin, @voltage_low)
-
-  defp float_to_integer(float) do
-    {integer, _rem} = float
-      |> Float.round
-      |> Float.to_string
-      |> Integer.parse
-
-    integer
   end
 end
