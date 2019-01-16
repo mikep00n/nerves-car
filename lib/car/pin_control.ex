@@ -10,8 +10,9 @@ defmodule Car.PinControl do
   end
 
   def pulse_pin(pin_number) do
-    turn_on_pin(pin_number)
-    turn_off_pin(pin_number)
+    with :ok <- turn_on_pin(pin_number) do
+      turn_off_pin(pin_number)
+    end
   end
 
   def turn_on_pin(pin_numbers) when is_list(pin_numbers) do
@@ -19,9 +20,9 @@ defmodule Car.PinControl do
   end
 
   def turn_on_pin(pin_number) do
-    set_output(pin_number)
-
-    GPIO.write(pin_number, @on)
+    with :ok <- set_output(pin_number) do
+      GPIO.write(pin_number, @on)
+    end
   end
 
   def turn_off_pin(pin_numbers) when is_list(pin_numbers) do
@@ -29,25 +30,29 @@ defmodule Car.PinControl do
   end
 
   def turn_off_pin(pin_number) do
-    set_output(pin_number)
-
-    GPIO.write(pin_number, @off)
+    with :ok <- set_output(pin_number) do
+      GPIO.write(pin_number, @off)
+    end
   end
 
   def read_pin(pin_number) do
-    set_input(pin_number)
-
-    GPIO.read(pin_number)
+    with :ok <- set_input(pin_number) do
+      GPIO.read(pin_number)
+    end
   end
 
   defp set_output(pin_number) do
-    unless GPIO.get_mode(pin_number) === :output do
+    if GPIO.get_mode(pin_number) === {:ok, :output} do
+      :ok
+    else
       GPIO.set_mode(pin_number, :output)
     end
   end
 
   defp set_input(pin_number) do
-    unless GPIO.get_mode(pin_number) === :input do
+    if GPIO.get_mode(pin_number) === {:ok, :input} do
+      :ok
+    else
       GPIO.set_mode(pin_number, :input)
     end
   end

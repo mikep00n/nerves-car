@@ -66,7 +66,7 @@ defmodule Car.Application do
         start: {
           SonicRangeControl,
           :start_link,
-          [direction, [name: server_name]]
+          [direction]
         }
       }
 
