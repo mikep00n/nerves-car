@@ -1,6 +1,8 @@
 defmodule Car.DutyCycle do
-  @duty_cycle_max 255
-  @duty_cycle_min 50
+  alias Car.Config
+
+  @duty_cycle_max Config.duty_cycle_max()
+  @duty_cycle_min Config.duty_cycle_min()
 
   @spec for_speed(integer, integer) :: integer
   def for_speed(current_speed, speed_max) do

@@ -3,16 +3,15 @@ defmodule Car.Application do
   # for more information on OTP Applications
   @moduledoc false
 
-  @trigger_pin_num 18
-  @input_pins [right: 24, left: 23, up: 17, down: 27]
-  @left_motor {5, 6}
-  @right_motor {13, 26}
-
   use Application
 
   require Logger
 
-  alias Car.{MotorDriver, SonicRangeControl, SonicRangeChecker, PinControl}
+  alias Car.{
+    Config,
+    MotorDriver, SonicRangeControl,
+    SonicRangeChecker, PinControl
+  }
 
   def start(_type, _args) do
     Logger.warn("Starting Application...")
@@ -24,8 +23,8 @@ defmodule Car.Application do
 
   def motor_children do
     [
-      motor_child(:left, @left_motor),
-      motor_child(:right, @right_motor)
+      motor_child(:left, Config.left_motor()),
+      motor_child(:right, Config.right_motor())
     ]
   end
 
@@ -49,14 +48,17 @@ defmodule Car.Application do
     [%{
       id: :sonic_range_checker,
       start: {SonicRangeChecker, :start_link, [
-        @trigger_pin_num,
-        @input_pins
+        Config.trigger_pin_num(),
+        Config.input_pins()
       ]}
     } | sonic_range_control_specs]
   end
 
   def sonic_range_controls do
-    Enum.reduce(@input_pins, {[], []}, fn ({direction, _}, {names, specs}) ->
+    Enum.reduce(Config.input_pins(), {[], []}, fn (
+      {direction, _},
+      {names, specs}
+    ) ->
       server_name = SonicRangeControl.server_name(direction)
 
       spec = %{

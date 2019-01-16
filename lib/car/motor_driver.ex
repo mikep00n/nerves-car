@@ -12,7 +12,7 @@ defmodule Car.MotorDriver do
 
   require Logger
 
-  alias Car.{MotorDriver, PinControl}
+  alias Car.{MotorDriver, PinControl, Config}
 
   @type start_config :: %{side: atom, pins: {integer, integer}}
   @type direction :: :forward | :reverse | :off
@@ -23,10 +23,6 @@ defmodule Car.MotorDriver do
     direction: direction,
     speed: integer
   }
-
-  @speed_range Enum.into(1..25, [])
-  @speed_range_max Enum.max(@speed_range)
-  @start_speed div(@speed_range_max, 2)
 
   @spec start_link(side, {pid, pid}) :: {:ok, pid}
   def start_link(side, pins) do
@@ -43,7 +39,10 @@ defmodule Car.MotorDriver do
   def motor_driver_name(side), do: String.to_atom("motor_driver_#{side}")
 
   def init(config) do
-    state = Map.merge(config, %{direction: :off, speed: @start_speed})
+    state = Map.merge(config, %{
+      direction: :off,
+      speed: Config.start_speed()
+    })
 
     Logger.warn("Started #{config.side} MotorDriver")
 
@@ -94,7 +93,7 @@ defmodule Car.MotorDriver do
   end
 
   defp verify_speed_range(speed) do
-    if Enum.member?(@speed_range, speed) do
+    if Enum.member?(Config.speed_range(), speed) do
       :ok
     else
       {:error, %{
@@ -102,7 +101,7 @@ defmodule Car.MotorDriver do
         message: "speed is out of range",
         details: %{
           speed: speed,
-          speed_range: @speed_range
+          speed_range: Config.speed_range()
         }
       }}
     end
@@ -149,7 +148,7 @@ defmodule Car.MotorDriver do
 
   @spec toggle_pulse_width(state, integer, integer, integer) :: {:ok, state}
   defp toggle_pulse_width(state, on_pin, off_pin, speed) do
-    with :ok <- PinControl.pulse_width_pin(on_pin, speed, @speed_range_max),
+    with :ok <- PinControl.pulse_width_pin(on_pin, speed, Config.speed_range_max()),
          :ok <- PinControl.turn_off_pin(off_pin) do
       {:ok, %{state | speed: speed}}
     end
