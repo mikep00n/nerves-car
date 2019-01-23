@@ -55,7 +55,7 @@ defmodule Car.MotorDriver do
 
   @spec turn_off(atom) :: {:ok, state}
   def turn_off(side) do
-    GenServer.call(motor_driver_name(side), :switch_voltage_off)
+    GenServer.call(motor_driver_name(side), :turn_off)
   end
 
   @spec change_direction(atom, direction) :: {:ok, state}
@@ -109,7 +109,7 @@ defmodule Car.MotorDriver do
 
   defp reply_with_voltage_change(state, direction) do
     with {:ok, new_state} <- set_current_direction(state, direction) do
-      {:reply, :ok, new_state}
+      {:ok, new_state}
     else
       e -> {:reply, e, state}
     end
@@ -161,3 +161,14 @@ defmodule Car.MotorDriver do
     end
   end
 end
+#  def read_current_speed(config) do
+#
+#    Map.merge(config, %{
+#      direction: :side,
+#      speed: speed
+#    })
+#
+#    {:ok, :speed}
+#  end
+#
+#end

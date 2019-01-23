@@ -1,10 +1,21 @@
-defmodule Car.Config do
+  defmodule Car.Config do
+
+  alias Car.DutyCycle
+
   def speed_range do
     Enum.into(1..25, [])
   end
 
   def speed_range_max do
     Enum.max(speed_range())
+  end
+
+  def speed_range_min do
+    Enum.min(speed_range())
+  end
+
+  def speed_range_off do
+    0
   end
 
   def start_speed do
@@ -34,4 +45,5 @@ defmodule Car.Config do
   def right_motor do
     {13, 26}
   end
+
 end
